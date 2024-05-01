@@ -1,1 +1,1 @@
-# IT6-Game
+Number Guesser is a simple text-based game that utilizes sockets. In this repository, I will attempt to further improve the sample program provided by my teacher and I will be both the server and the client.
