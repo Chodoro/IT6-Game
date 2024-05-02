@@ -30,21 +30,21 @@ def update_leaderboard(name, attempts, difficulty):
     leaderboard = load_leaderboard()
     updated_leaderboard = []
 
-    for line in leaderboard:
-        if name in line and difficulty in line:
-            old_attempts = int(line.split('-')[1].strip())
-            if attempts < old_attempts:
-                updated_leaderboard.append(f"{name} attempts - {attempts} {difficulty}\n")
-            else:
-                updated_leaderboard.append(line)
-        else:
-            updated_leaderboard.append(line)
-    
-    if name not in [line.split()[0] for line in updated_leaderboard]:
-        updated_leaderboard.append(f"{name} attempts - {attempts} {difficulty}\n")
+    updated_entry = f"{name} attempts - {attempts} {difficulty}\n"
+    inserted = False
 
-    updated_leaderboard.sort(key=lambda x: int(x.split('-')[1].split()[0]))  # Sort by attempts
-    updated_leaderboard = [line for i, line in enumerate(updated_leaderboard) if "TOP" in line or i < 5]
+    for line in leaderboard:
+        if not inserted and "TOP" not in line:
+            old_attempts = int(line.split('-')[1].split()[0])
+            if attempts < old_attempts:
+                updated_leaderboard.append(updated_entry)
+                inserted = True
+        updated_leaderboard.append(line)
+    
+    if not inserted:
+        updated_leaderboard.append(updated_entry)
+
+    updated_leaderboard.sort(key=lambda x: int(x.split('-')[1].split()[0]))
 
     save_leaderboard(updated_leaderboard)
 
