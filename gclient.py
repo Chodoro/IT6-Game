@@ -1,36 +1,39 @@
 import socket
 
-def play_game(s, difficulty):
-    s.sendall(difficulty.encode())
-    
-    while True:
-        reply = s.recv(1024).decode().strip()
-        print(reply)
-
-        if "Correct" in reply:
-            break
-
-        user_input = input("").strip()
-        s.sendall(user_input.encode())
+HOST = "localhost"
+PORT = 7777
 
 def main():
-    host = "192.168.1.5"
-    port = 7777
-    
     s = socket.socket()
-    s.connect((host, port))
-    
-    data = s.recv(1024)
-    print(data.decode().strip())
-    
+    s.connect((HOST, PORT))
+
     while True:
-        difficulty = input("Choose difficulty (easy/medium/hard): ").strip().lower()
-        
-        play_game(s, difficulty)
-        play_again = input("Do you want to play again? (yes/no): ").strip().lower()
-        if play_again != 'yes':
-            break
-    
+        data = s.recv(1024)
+        print(data.decode().strip())
+
+        difficulty = input("Enter difficulty: ")
+        s.sendall(difficulty.encode())
+
+        name = input("Enter your name: ")
+        s.sendall(name.encode())
+
+        while True:
+            message = s.recv(1024)
+            print(message.decode().strip())
+
+            if "Correct" in message.decode():
+                play_again = input("Would you like to play again? (yes/no): ")
+                s.sendall(play_again.encode())
+
+                if play_again.lower() == "no":
+                    s.close()
+                    return
+                else:
+                    break
+
+            guess = input("Enter your guess: ")
+            s.sendall(guess.encode())
+
     s.close()
 
 if __name__ == "__main__":
