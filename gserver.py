@@ -1,74 +1,81 @@
 import socket
 import random
+import json
 
-def generate_random_int(low, high):
-    return random.randint(low, high)
+HOST = "localhost"
+PORT = 7777
+LEADERBOARD_FILE = "leaderboard.json"
 
-def play_game(conn, guessme):
-    conn.sendall(b"Enter your guess: ")
+def load_leaderboard():
+    try:
+        with open(LEADERBOARD_FILE, "r") as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {}
+
+def save_leaderboard(leaderboard):
+    with open(LEADERBOARD_FILE, "w") as file:
+        json.dump(leaderboard, file)
+
+def generate_random_int(difficulty):
+    if difficulty == "easy":
+        return random.randint(1, 50)
+    elif difficulty == "medium":
+        return random.randint(1, 100)
+    elif difficulty == "hard":
+        return random.randint(1, 500)
+    else:
+        return random.randint(1, 100)
+
+def play_game(conn):
+    conn.sendall(b"Welcome to the Guessing Game! Select difficulty: (easy/medium/hard)")
+    difficulty = conn.recv(1024).decode().strip()
+    number_to_guess = generate_random_int(difficulty)
     tries = 0
-    
-    while True:
-        client_input = conn.recv(1024)
-        guess = int(client_input.decode().strip())
-        tries += 1
-        
-        if guess == guessme:
-            conn.sendall(b"Correct Answer!")
-            return tries
-        elif guess > guessme:
-            conn.sendall(b"Guess Lower!\nEnter guess: ")
-        elif guess < guessme:
-            conn.sendall(b"Guess Higher!\nEnter guess: ")
 
-def update_leaderboard(username, score):
-    with open("leaderboard.txt", "a") as f:
-        f.write(f"{username}: {score} tries\n")
+    conn.sendall(b"Make a guess: ")
+    name = conn.recv(1024).decode().strip()
+
+    while True:
+        guess = int(conn.recv(1024).decode().strip())
+        tries += 1
+
+        if guess == number_to_guess:
+            leaderboard = load_leaderboard()
+            if name in leaderboard:
+                if tries < leaderboard[name]:
+                    leaderboard[name] = tries
+            else:
+                leaderboard[name] = tries
+
+            save_leaderboard(leaderboard)
+
+            conn.sendall(b"Correct Answer! Would you like to play again? (yes/no): ")
+            play_again = conn.recv(1024).decode().strip()
+            if play_again.lower() == "no":
+                conn.close()
+                return
+            else:
+                play_game(conn)
+                break
+
+        elif guess < number_to_guess:
+            conn.sendall(b"Guess Higher!")
+        else:
+            conn.sendall(b"Guess Lower!")
 
 def main():
-    host = "192.168.1.5"
-    port = 7777
-    
-    banner = "== Guessing Game v1.0 ==\n"
-    difficulties = {'easy': (1, 50), 'medium': (1, 100), 'hard': (1, 500)}
-    
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((host, port))
+    s.bind((HOST, PORT))
     s.listen(5)
-    
-    print(f"Server is listening on port {port}")
-    
+    print(f"Server is listening on port {PORT}")
+
     while True:
         conn, addr = s.accept()
-        print(f"New client connected: {addr[0]}")
-        
-        guessme = 0
-        username = ""
-        score = 0
-        
-        while True:
-            difficulty = conn.recv(1024).decode().strip().lower()
-            if difficulty not in difficulties:
-                conn.sendall(b"Invalid difficulty choice. Please choose again.")
-                continue
+        print(f"New client connected: {addr}")
+        play_game(conn)
 
-            low, high = difficulties[difficulty]
-            guessme = generate_random_int(low, high)
-
-            tries = play_game(conn, guessme)
-
-            if username:
-                update_leaderboard(username, tries)
-
-            conn.sendall(b"Do you want to play again? (yes/no): ")
-            play_again = conn.recv(1024).decode().strip().lower()
-            if play_again != 'yes':
-                break
-        leaderboard_text = "== Leaderboard ==\n"
-        with open("leaderboard.txt", "r") as f:
-            leaderboard_text += f.read()
-        conn.sendall(leaderboard_text.encode())
-        conn.close()
+    s.close()
 
 if __name__ == "__main__":
     main()
