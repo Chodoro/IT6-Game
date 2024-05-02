@@ -21,6 +21,10 @@ def main():
             message = s.recv(1024)
             print(message.decode().strip())
 
+            if "Leaderboard:" in message.decode():
+                leaderboard_data = s.recv(1024)
+                print(leaderboard_data.decode().strip())
+
             if "Correct" in message.decode():
                 play_again = input("Would you like to play again? (yes/no): ")
                 s.sendall(play_again.encode())
